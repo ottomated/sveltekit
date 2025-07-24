@@ -1,6 +1,7 @@
 /** @import { Transport } from '@sveltejs/kit' */
 
 import { stringify as _stringify, parse } from 'devalue';
+import { base64_decode, base64_encode, text_decoder, text_encoder } from './utils.js';
 
 /**
  * @param {string} route_id
@@ -44,12 +45,7 @@ export function stringify_remote_arg(arg, transport) {
 	// If people hit file/url size limits, we can look into using something like compress_and_encode_text from svelte.dev beyond a certain size
 	const json_string = stringify(arg, transport);
 
-	// Convert to UTF-8 bytes, then base64 - handles all Unicode properly (btoa would fail on exotic characters)
-	const utf8_bytes = new TextEncoder().encode(json_string);
-	return btoa(String.fromCharCode(...utf8_bytes))
-		.replace(/=/g, '')
-		.replace(/\+/g, '-')
-		.replace(/\//g, '_');
+	return base64_encode(text_encoder.encode(json_string));
 }
 
 /**
@@ -62,11 +58,7 @@ export function parse_remote_args(stringified_arg, transport) {
 
 	if (!stringified_arg) return undefined;
 
-	// We don't need to add back the `=`-padding because atob can handle it
-	const base64_restored = stringified_arg.replace(/-/g, '+').replace(/_/g, '/');
-	const binary_string = atob(base64_restored);
-	const utf8_bytes = new Uint8Array([...binary_string].map((char) => char.charCodeAt(0)));
-	const json_string = new TextDecoder().decode(utf8_bytes);
+	const json_string = text_decoder.decode(base64_decode(stringified_arg));
 
 	return parse(json_string, decoders);
 }
